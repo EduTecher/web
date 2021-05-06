@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>人脸识别</title>
+    <style>
+        video {
+            height: 100%;
+        }
+
+        button {
+            height: 32px;
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div id="default">
+        {{#button}}
+            <button id="{{id}}">{{name}}</button>
+        {{/button}}
+        <input type="file" multiple name="" id="">
+    </div>
+    <div>
+        <video id="video" style="height: 90vh;"></video>
+        <canvas id="canvas" width="640" height="480" style="height: 90vh;"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mustache@4.2.0/mustache.min.js"></script>
+    <script>
+        var html = {
+            'button':[
+                {'id':'camera','name':'打开摄像机'},
+                {'id':'snap','name':'拍照'},
+                {'id':'face_detection','name':'人脸检测'},
+                {'id':'face_recogniton','name':'人脸识别'},
+            ],
+        }
+        default_div = document.querySelector('#default');
+        default_div.innerHTML=(Mustache.render(default_div.innerHTML,html));
+
+        var videoStatus = 0;
+        var photoStatus = 0;
+        var video = document.querySelector('#video');
+        var canvas = document.querySelector('#canvas');
+        var context = canvas.getContext('2d');
+        context.strokeStyle = "red";
+        context.lineWidth = 4;
+
+        func = new Array(
+        function(){
+            if (videoStatus == 0){
+                if (navigator.mediaDevices.getUserMedia){
+                    navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(Success).catch(Error);
+                }
+                else {
+                    getUserMedia = navigator.getUserMedia
+                    || navagator.webkitGetUserMedia
+                    || navigator.mozGetUserMedia
+                    || navigator.msGetUserMedia;
+                    getUserMedia({ video: true, audio: false }, Success(stream), Error(error));
+                }
+            }
+            else if (videoStatus == 1) {
+                mediaStream && mediaStream.stop();
+                videoStatus = 0;
+                canvas.style.display = 'none';
+            }
+            function Success(stream) {
+                console.log(stream);
+                mediaStream = typeof stream.stop === 'function' ? stream : stream.getTracks()[0];
+                if ('srcObject' in video) { video.srcObject = stream; }
+                else { video.src = window.URL.createObjectURL(stream); }
+                video.onloadedmetadata = function (e) {
+                    video.play();
+                    video.style.display = 'block';
+                    videoStatus = 1;
+                };
+            } 
+            function Error(error) { console.log(`${error.name}, ${error.message}`); }
+        },
+        function(){
+            if (videoStatus == 0) { alert('请先开启摄像头'); return false; }
+            else {$('#video').hide() }
+            canvas.style.display = 'block';
+            context.drawImage(video, 0, 0, 640, 480);
+            photoStatus = 1;
+            $.ajax({
+                url: '/api/local/snap',
+                method: 'POST',
+                data: canvas.toDataURL('image/png',0.2),
+                success: function (result, status) {
+                    console.log(result);
+                },
+                error: function (error) {
+                    console.log(error); 
+                },
+                complete: function () {}
+            });
+        },
+        /*人脸检测*/
+        function(){
+            if (videoStatus == 0) { alert('请先开启摄像头'); return false; }
+            else {$('#video').hide() }
+            canvas.style.display = 'block';
+            context.drawImage(video, 0, 0, 640, 480);
+            photoStatus = 1;
+            $.ajax({
+                url: '/api/local/face_detect',
+                method: 'POST',
+                data: canvas.toDataURL('image/png'),
+                success: function (result, status) {
+                    context.strokeRect(result[0],result[1],result[2],result[3])
+                },
+                error: function (error) {
+                    console.log(error); 
+                },
+                complete: function () {}
+            });
+        },
+        function(){
+
+        },);
+
+        $(function(){
+            html['button'].forEach(function(e,index){
+                $('#'+e['id']).click(func[index]);
+            });
+        });
+    </script>
+</body>
+</html>
