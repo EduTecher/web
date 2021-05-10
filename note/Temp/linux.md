@@ -34,7 +34,7 @@
 
 # 6. Time
 
-- [x] **Time** soft hard ntp date/cal
+- [ ] **Time** soft hard ntp date/cal
 
 # 7. User
 
